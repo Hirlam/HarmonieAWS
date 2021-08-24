@@ -1,0 +1,78 @@
+NPES=32
+
+BYTESWAPIO=-fconvert=big-endian
+
+MOD=mod
+
+FOPT=-O2 -fopenmp -fbacktrace -ffree-line-length-none -march=armv8.2-a+fp16+rcpc+dotprod+crypto -mtune=cortex-a72
+
+COPT=-O1 -fopenmp 
+
+CDEFS=-DLINUX -DCNL -DLITTLE -DLITTLE_ENDIAN -DHIGHRES -DADDRESS64 -DPOINTER_64 -D_ABI64 -DBLAS -DSTATIC_LINKING -DNO_CURSES
+FDEFS=-DLINUX -DCNL -DLITTLE -DLITTLE_ENDIAN -DHIGHRES -DADDRESS64 -DPOINTER_64 -D_ABI64 -DBLAS -DSTATIC_LINKING -DNO_CURSES \
+-Din_surfex -DSFX_ARO -DSFX_ASC -DSFX_OL -DSFX_TXT -DSFX_FA -DSFX_LFI -DGRIB_API_1 -DOLDBUFR -DUSE_NETCDF
+
+ifeq ($(FP_PRECISION),single)
+      FDEFS += -DPARKIND1_SINGLE -DB2O_HAVE_IFSAUX -DHIRLAM_SP_HACKS 
+      CDEFS += -DPARKIND1_SINGLE -DB2O_HAVE_IFSAUX 
+      AUTODBL=
+else
+      AUTODBL=-fdefault-real-8 -fdefault-double-8 -DREAL_8
+endif
+
+CC=/opt/amazon/openmpi/bin/mpicc -g
+CCFLAGS=$(COPT) $(CDEFS)
+
+FC=/opt/amazon/openmpi/bin/mpif90 -g
+FCFLAGS=$(FOPT) $(FDEFS) $(BYTESWAPIO)
+
+FCFREE=-ffree-form
+FCFIXED=-ffixed-form
+AUTODBLSFX=$(AUTODBL)
+
+LD=$(FC)
+LDFLAGS=$(FCFLAGS)
+
+ECCODES=/home/ubuntu/harmonie/GNU/eccodes
+ECCODES_DEFINITION_PATH=$ECCODES/share/eccodes/definitions
+ECCODES_INCLUDE=-I$(ECCODES)/include
+ECCODES_LIB=-L$(ECCODES)/lib -leccodes_f90 -leccodes
+NETCDF=/home/ubuntu/harmonie/GNU/netcdf
+NETCDF_INCLUDE=-I$(NETCDF)/include
+NETCDF_LIB=-L$(NETCDF)/lib -lnetcdff -lnetcdf
+HDF5=/home/ubuntu/harmonie/GNU/hdf5
+HDF5_INCLUDE=-I$(HDF5)/include -I$(HDF5)/include/static
+HDF5_LIB=-L$(HDF5)/lib/ -lhdf5_hl_fortran -lhdf5_fortran -lhdf5
+
+MPIDIR=/opt/amazon/openmpi
+
+SYSLIBS=$(ECCODES_LIB) $(NETCDF_LIB) $(HDF5_LIB) -llapack -lblas -lpthread -ldl
+
+INCLDIRS=$(ECCODES_INCLUDE) $(NETCDF_INCLUDE) $(HDF5_INCLUDE)
+
+RANLIB=ranlib
+
+PRESEARCH=-Wl,--start-group
+POSTSEARCH=-Wl,--end-group
+
+YACCLEX_LIBS=-lm
+
+LDCC=$(CC) $(CCFLAGS)
+
+RGB_FCFLAGS=$(AUTODBL) $(BYTESWAPIO)
+RGB_CCFLAGS=
+
+GRIBEX_FCFLAGS=-DREAL_BIGGER_THAN_INTEGER $(AUTODBL) $(BYTESWAPIO) -DUSE_NO_POINTERS -DPOINTER_64 -DINTEGER_IS_INT -Dlinux -DLITTLE_ENDIAN -DTABLE_PATH=\"emos\"
+GRIBEX_CCFLAGS=-DPOINTER_64 -DINTEGER_IS_INT -DLITTLE_ENDIAN -DTABLE_PATH=\"emos\" -Dlinux -DFOPEN64
+
+BUFR_FCFLAGS=-DREAL_BIGGER_THAN_INTEGER $(AUTODBL) $(BYTESWAPIO) -DUSE_NO_POINTERS -DPOINTER_64 -DINTEGER_IS_INT -Dlinux -DLITTLE_ENDIAN -DTABLE_PATH=\"emos\"
+BUFR_CCFLAGS=-DPOINTER_64 -DINTEGER_IS_INT -DLITTLE_ENDIAN -DTABLE_PATH=\"emos\" -Dlinux -DFOPEN64
+
+AUXSOURCES=sources.linux
+
+EXTMODS=netcdf,hdf5,iso_c_binding,odb_c_binding,globvar1,grib_api
+
+SFX_FCFLAGS=-DARO=aro -DOL=ol -DASC=asc -DTXT=txt -DFA=fa -DLFI=lfi
+
+C_code.o:  COPT := $(subst -O1,-O0,$(COPT))
+

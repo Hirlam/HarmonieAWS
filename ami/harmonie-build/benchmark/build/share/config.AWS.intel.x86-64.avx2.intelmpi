@@ -1,0 +1,98 @@
+NPES=64
+
+MOD=mod
+
+FOPT=-O2 -qopenmp -fp-model precise -fp-speculation=safe -convert big_endian -assume byterecl -ftz -fpe0 -mkl -march=core-avx2 -g -traceback \
+     -I/home/ubuntu/harmonie/INTEL/eccodes/include \
+     -I/home/ubuntu/harmonie/INTEL/netcdf/include \
+     -I/home/ubuntu/harmonie/INTEL/hdf5/include \
+     -I/home/ubuntu/harmonie/INTEL/hdf5//include/shared
+
+COPT=-O2 -qopenmp -fp-model precise -mkl -g -traceback \
+     -I/home/ubuntu/harmonie/INTEL/eccodes/include \
+     -I/home/ubuntu/harmonie/INTEL/netcdf/include \
+     -I/home/ubuntu/harmonie/INTEL/hdf5/include \
+     -I/home/ubuntu/harmonie/INTEL/hdf5//include/shared
+
+FDEFS=-DLINUX -DLITTLE -DLITTLE_ENDIAN -DHIGHRES -DADDRESS64 -DPOINTER_64 -D_ABI64 -DBLAS -DSTATIC_LINKING -DINTEL -DINTEGER_IS_INT \
+      -D_RTTOV_DO_DISTRIBCOEF -DNO_CURSES -DGRIB_API_1 -DINTEL_BUG_MPOBSEQ -DOLDBUFR \
+      -Din_surfex -DSFX_ARO -DSFX_ASC -DSFX_OL -DSFX_TXT -DSFX_FA=sfx_fa -DSFX_LFI -DUSE_SODA
+
+CDEFS=-DLINUX -DLITTLE -DLITTLE_ENDIAN -DHIGHRES -DADDRESS64 -DPOINTER_64 -D_ABI64 -DBLAS \
+      -DSTATIC_LINKING -DINTEL -DINTEGER_IS_INT -D_RTTOV_DO_DISTRIBCOEF -DNO_CURSES -DFOPEN64
+
+ifeq ($(FP_PRECISION),single)
+      FDEFS += -DPARKIND1_SINGLE -DB2O_HAVE_IFSAUX -DHIRLAM_SP_HACKS 
+      CDEFS += -DPARKIND1_SINGLE -DB2O_HAVE_IFSAUX 
+      AUTODBL=
+else
+      FDEFS += -DREAL_8 -DREAL_BIGGER_THAN_INTEGER 
+      CDEFS += -DREAL_8 -DREAL_BIGGER_THAN_INTEGER
+      AUTODBL=-r8
+endif
+
+CC=/opt/intel/compilers_and_libraries_2020.2.254/linux/mpi/intel64/bin/mpiicc
+CCFLAGS=$(COPT) $(CDEFS) 
+
+FC=/opt/intel/compilers_and_libraries_2020.2.254/linux/mpi/intel64/bin/mpiifort
+FCFLAGS=$(FOPT) $(FDEFS) 
+
+FCFREE=-free
+FCFIXED=-nofree
+AUTODBLSFX=$(AUTODBL)
+
+LD=$(FC)
+LDFLAGS=-O2 -fp-model precise -fp-speculation=safe -ftz -fpe0 -mkl -g -traceback -Wl,-M -Wl,-export-dynamic
+
+ECCODES=/home/ubuntu/harmonie/INTEL/eccodes
+ECCODES_DEFINITION_PATH=$ECCODES/share/eccodes/definitions
+ECCODES_INCLUDE=-I$(ECCODES)/include
+ECCODES_LIB=-L$(ECCODES)/lib -leccodes_f90 -leccodes
+NETCDF=/home/ubuntu/harmonie/INTEL/netcdf
+NETCDF_INCLUDE=-I$(NETCDF)/include
+NETCDF_LIB=-L$(NETCDF)/lib -lnetcdff -lnetcdf
+HDF5=/home/ubuntu/harmonie/INTEL/hdf5
+HDF5_INCLUDE=-I$(HDF5)/include -I$(HDF5)/include/static
+HDF5_LIB=-L$(HDF5)/lib/  -lhdf5_hl_fortran -lhdf5_fortran -lhdf5 -lhdf5_hl_f90cstub -lhdf5_hl_fortran -lhdf5_hl
+
+MKL=/opt/intel/oneapi/mkl/2021.3.0
+MKL_LIB=-Wl,--start-group -L$(MKL)/lib/intel64/ -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group -liomp5 -lpthread -lm -ldl
+
+SYSLIBS=$(ECCODES_LIB) $(MKL_LIB) $(NETCDF_LIB) $(HDF5_LIB)
+
+INCLDIRS=$(ECCODES_INC) $(NETCDF_INC) $(HDF5_INC)
+
+RANLIB=ranlib
+
+PRESEARCH=-Wl,--start-group
+POSTSEARCH=-Wl,--end-group
+
+YACC=bison -y -d
+YACCLEX_LIBS=-lm
+
+LDCC=$(CC) -v -O2 -DLINUX  -w -lifcore -lifport
+
+SFX_FCFLAGS=-DARO=aro -DOL=ol -DASC=asc -DTXT=txt -DFA=fa -DLFI=lfi
+
+AUXSOURCES=sources.linux
+
+# comma-separated list of external module references
+EXTMODS=eccodes,grib_api,netcdf,hdf5,iso_c_binding
+
+ifeq ($(PROJ),utiloulan)
+FCFLAGS := $(subst -DLITTLE_ENDIAN,,$(FCFLAGS))
+endif
+# Lower optimisation to avoid compiler crash
+mode_read_surf_lfi.o:  FCFLAGS := $(subst -O2,-O0,$(FCFLAGS))
+write_surfx1_aro.o:  FCFLAGS := $(subst -O2,-O0,$(FCFLAGS))
+# util/auxlibs/{rgb, gribex, bufr}
+
+ifeq ($(PROJ),gribex)
+AUTODBL := $(subst -r8,-r8 -i4,$(AUTODBL))
+endif
+ifeq ($(PROJ),bufr)
+AUTODBL := $(subst -r8,-r8 -i4,$(AUTODBL))
+endif
+ifeq ($(PROJ),rgb)
+AUTODBL := $(subst -r8,-r8 -i4,$(AUTODBL))
+endif

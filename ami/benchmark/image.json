@@ -1,0 +1,66 @@
+{
+    "variables": {
+        "ami_name": "Harmonie AMI Ubuntu 18.04",
+        "ami_description": "Harmonie AMI Ubuntu 18.04",
+	"ami_source": "",
+        "ami_instance": ""
+    },
+    "builders": [{
+        "type": "amazon-ebs",
+	"region": "us-east-1",
+	"source_ami_filter": {
+            "filters": {
+                "virtualization-type": "hvm",
+		"name": "{{user `ami_source`}}",
+                "root-device-type": "ebs"
+	    },
+	     "owners": [ "amazon" ],
+             "most_recent": true
+            
+        },
+        "instance_type": "{{user `ami_instance`}}",
+        "ssh_username": "ubuntu",
+        "ami_virtualization_type": "hvm",
+        "ebs_optimized": true,
+        "ami_name": "{{user `ami_name`}} {{timestamp}}",
+        "ami_description": "{{user `ami_description`}}",
+        "temporary_iam_instance_profile_policy_document": {
+            "Version": "2012-10-17",
+            "Statement": [{
+                "Effect": "Allow",
+                "Action": ["s3:Get*", "s3:List*"],
+                "Resource": "*"
+            }]
+        },
+        "launch_block_device_mappings": [{
+            "device_name": "/dev/sda1",
+            "volume_size": 100,
+            "volume_type": "gp2",
+            "delete_on_termination": true
+        }],
+        "tags": {
+            "OS_Version": "Harmonie AMI Ubuntu 18.04",
+            "Release": "Latest",
+            "Name": "Harmonie Ubuntu 18.04",
+            "Base_AMI_Name": "{{ .SourceAMIName }}"
+        }
+    }],
+    "provisioners": [{
+        "type": "shell",
+        "script": "./generic/0.upgrade.sh",
+        "expect_disconnect": true
+    }, {
+        "type": "shell",
+        "script": "./generic/1.compiler.sh",
+        "expect_disconnect": true
+    }, {
+        "type": "shell",
+        "script": "./generic/2.external-dependencies.sh",
+        "expect_disconnect": true
+    }, {
+        "type": "shell",
+        "script": "./benchmark/scripts/3.build-harmonie.sh",
+        "expect_disconnect": true
+    }
+]
+}
